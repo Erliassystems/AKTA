@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: akta_postgres
+    environment:
+      POSTGRES_USER: akta_user
+      POSTGRES_PASSWORD: akta_password
+      POSTGRES_DB: akta_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - akta-network
+    restart: unless-stopped
+
+  # Redis for caching and task queue
+  redis:
+    image: redis:7-alpine
+    container_name: akta_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - akta-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+  # FastAPI backend (optional - for development)
+  api:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: akta_api
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=akta_user
+      - POSTGRES_PASSWORD=akta_password
+      - POSTGRES_DB=akta_db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Backend:/app
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - akta-network
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # React frontend (optional - for development)
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: akta_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - api
+    networks:
+      - akta-network
+    restart: unless-stopped
+
+  # Celery worker for background tasks (optional)
+  celery-worker:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: akta_celery_worker
+    environment:
+      - POSTGRES_SERVER=postgres
+      - POSTGRES_USER=akta_user
+      - POSTGRES_PASSWORD=akta_password
+      - POSTGRES_DB=akta_db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./Backend:/app
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - akta-network
+    restart: unless-stopped
+    command: celery -A app.celery worker --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  akta-network:
+    driver: bridge
