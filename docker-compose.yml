@@ -64,7 +64,7 @@ services:
       dockerfile: Dockerfile
     container_name: akta_frontend
     ports:
-      - "3000:3000"
+      - "3000:5173"
     volumes:
       - ./Frontend:/app
       - /app/node_modules

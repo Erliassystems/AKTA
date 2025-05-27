@@ -8,9 +8,9 @@ from typing import List
 import logging
 from uuid import UUID
 
-from ...database import get_db
-from ...models.proposal import Proposal
-from ...schemas.proposal import (
+from ....database import get_db
+from ....models.proposal import Proposal
+from ....schemas.proposal import (
     ProposalCreate,
     ProposalUpdate,
     ProposalResponse,

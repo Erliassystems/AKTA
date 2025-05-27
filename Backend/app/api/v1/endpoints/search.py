@@ -8,9 +8,9 @@ from typing import List, Optional
 import time
 import logging
 
-from ...database import get_db
-from ...models.proposal import Proposal
-from ...schemas.proposal import (
+from ....database import get_db
+from ....models.proposal import Proposal
+from ....schemas.proposal import (
     SearchRequest,
     SearchResponse,
     ProposalSummary,
